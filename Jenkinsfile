@@ -1,9 +1,10 @@
+```groovy
 pipeline {
     agent any
 
     environment {
         IMAGE_NAME = "iamswapnil98/flask_app"
-        IMAGE_TAG  = "v1"
+        IMAGE_TAG = "v1"
     }
 
     stages {
@@ -16,32 +17,39 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                 }
             }
         }
 
-        stage('Verify Image') {
+        stage('Push Docker Image') {
             steps {
-                sh "docker images | grep flask-devops"
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
     }
 
     post {
         success {
-            echo 'Docker image built successfully.'
+            echo "Docker image pushed successfully!"
         }
-
         failure {
-            echo 'Docker image build failed.'
+            echo "Pipeline failed."
         }
-
         always {
-            echo 'Pipeline execution completed.'
+            sh "docker logout || true"
         }
     }
 }
-
-
+```
